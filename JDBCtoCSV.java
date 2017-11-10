@@ -2,26 +2,27 @@ package com.playmaker.mtools;
 
 import java.sql.*;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.FileFilter;
 import java.lang.management.ManagementFactory;
 import com.opencsv.*;
-import java.util.Date;
 import java.security.MessageDigest;
-import javax.xml.bind.DatatypeConverter;
 import org.apache.commons.io.FilenameUtils;
 
 public class JDBCtoCSV {
 
     public static void main(String[] args) {
-        String db_driver = "org.postgresql.Driver";
-        String conn_str = "jdbc:postgresql://192.168.103.102:5432/playmaker";
-        String user = "integration";
-        String pass = "(qaswedfr{};')";
+        String db_driver = "org.sqlite.JDBC";
+        String conn_str = "jdbc:sqlite:/Users/tenders/Downloads/database.sqlite";
+        String user = "";
+        String pass = "";
         String out_dir = "/Users/tenders/Documents/testing";
         String int_uuid = "6fea45fe-e08d-47ea-98ff-255ef58c6545";
-        String query = "select * from pm20029.referrals;";
+        //bad int_uuid
+        //String int_uuid = "19939115-4750-438b-9960-f92006b51dd0";
+        String query = "select * from country;";
         String tenant = "859e4142-67f8-4807-a0e4-937f02b01319";
+        //bad tenant
+        //String tenant = "19939115-4750-438b-9960-f92006b51dd0";
 
         GetData(db_driver, conn_str, user, pass, out_dir, tenant, int_uuid, query, true);
         
@@ -37,11 +38,11 @@ public class JDBCtoCSV {
                                 String sql,
                                 Boolean purgefiles) {
         //Creating variables in largest scope for use later
-        String results = "";
         File upload_file = null;
         String tmp_file = null;
         String tmp_dir = null;
         Long file_time = 0L;
+        String results = "";
 
         //Getting Unix epoch for filename
         java.util.Date timestamp = new java.util.Date();
@@ -53,8 +54,7 @@ public class JDBCtoCSV {
         //Check output directory for write access (and that it is not a file)
         File tmp_chk = new File(out_dir);
         if (!tmp_chk.isDirectory() || !tmp_chk.canWrite()) {
-            System.out.println("Provided directory either doesn't exist, or is not writeable.");            
-            return "Provided directory either doesn't exist, or is not writeable.";
+            return logAggregator(results, logBuilder("Provided directory either doesn't exist, or is not writeable."));
         }
         tmp_dir = FilenameUtils.concat(out_dir, "out");
         File tmp = new File(tmp_dir);
@@ -62,9 +62,7 @@ public class JDBCtoCSV {
             tmp.mkdir();
         }
         if (!tmp.canWrite()) {
-            System.out.println(tmp_dir);
-            System.out.println("Can't write to the output directory");            
-            return "Can't write to the output directory";
+            return logAggregator(results, logBuilder("Can't write to the output directory"));
         }
         //This isn't in the correct dir...
         String tmp_filename = running_pid + ".csv";
@@ -93,15 +91,14 @@ public class JDBCtoCSV {
                         }
                     }
                 } else {
-                    System.out.println("No files to be purged.");
+                    logAggregator(results, "No files to be purged.");
                 }
-                System.out.println("Files purged to create free space");
+                logAggregator(results, "Files purged to create free space");
             }
             freespace = tmp_chk.getUsableSpace();
             free_gigs = freespace/1073741824;
             if (free_gigs < 10) {
-                System.out.println("Not enough freespace to generate new files.");
-                return "Not enough freespace to generate new files.";
+                return logAggregator(results, logBuilder("Not enough freespace to generate new files."));
             }
         }
 
@@ -123,7 +120,7 @@ public class JDBCtoCSV {
         try {
             Class.forName(dbdriver);
             Connection conn = java.sql.DriverManager.getConnection(db_conn_str, username, password);
-            java.sql.Statement stmt = conn.createStatement(1005, 1007);
+            java.sql.Statement stmt = conn.createStatement();
             java.sql.ResultSet rs = stmt.executeQuery(sql);
             CSVWriter csv_write = new CSVWriter(new java.io.FileWriter(tmp_file), ',');
             csv_write.writeAll(rs, true);
@@ -137,13 +134,24 @@ public class JDBCtoCSV {
         File f = new File(tmp_file); 
         upload_file = new File(FilenameUtils.concat(tmp_dir, filename));
         if (!f.exists()) {
-            return "No output file was created. Please try again.";
+            return logAggregator(results, logBuilder("No output file was created. Please try again."));
         }
         if (f.renameTo(upload_file)) {
-            return upload_file.getPath();
+            return logAggregator(results, upload_file.getPath());
         } else {
-            System.out.println("rename failure");
-            return "rename failure";
+            return logAggregator(results, logBuilder("rename failure"));
+        }
+    }
+
+    private static String logBuilder(String message) {
+        return "com.playmaker.mtools.JDBCtoCSV.GetData -- " + message; 
+    }
+
+    private static String logAggregator(String log_str, String new_msg) {
+        if (log_str.length() == 0) {
+            return new_msg;
+        } else {
+            return log_str + "\n" + new_msg;
         }
     }
 }
