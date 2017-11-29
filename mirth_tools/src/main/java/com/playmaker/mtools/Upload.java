@@ -11,6 +11,8 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Hashtable;
+import java.util.Properties;
+
 
 /**
  * com.playmaker.mtools.Upload data to playmaker
@@ -26,17 +28,17 @@ public class Upload {
     /**
      * Default upload retries
      */
-    private static int DEFAULT_RETRIES = 3;
+    // private static int DEFAULT_RETRIES = 3;
 
     /**
      * Default back-off time difference in seconds
      */
-    private static int DEFAULT_BACKOFF = 10;
+    // private static int DEFAULT_BACKOFF = 10;
 
     /**
      * File size of streaming chunks (in bytes)
      */
-    private static int CHUNK_SIZE = 10485760;
+    // private static int CHUNK_SIZE = 10485760;
 
     /**
      * Tester Method
@@ -69,7 +71,17 @@ public class Upload {
      * @param dir_path       The directory to upload files from.
      */
     public static Hashtable<String,String> upload(String dir_path, String url_endpoint) {
-        return upload(dir_path, url_endpoint, DEFAULT_RETRIES);
+        Properties prop = new Properties();
+        
+        try {
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            InputStream propStream = loader.getResourceAsStream("config.properties");
+            prop.load(propStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return upload(dir_path, url_endpoint, Integer.parseInt(prop.getProperty("DEFAULT_RETRIES")));
     }
 
     /**
@@ -79,6 +91,16 @@ public class Upload {
      * @param retryAttempts  The number of times to retry uploading a file if there is a failure.
      */
     public static Hashtable<String, String> upload(String dir_path, String url_endpoint, int retryAttempts) {
+
+        Properties prop = new Properties();
+        
+        try {
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            InputStream propStream = loader.getResourceAsStream("config.properties");
+            prop.load(propStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         String tenant_id = "";
         String integration_id = "";
@@ -159,7 +181,17 @@ public class Upload {
      * @param file_path      full path of the file to upload to the server.
      */
     public static Hashtable<String, String> uploadFile(String tenant_id, String integration_id, String url_endpoint, String file_path) {
-        return Upload.uploadFile(tenant_id, integration_id, file_path, url_endpoint, DEFAULT_RETRIES);
+        Properties prop = new Properties();
+        
+        try {
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            InputStream propStream = loader.getResourceAsStream("config.properties");
+            prop.load(propStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return Upload.uploadFile(tenant_id, integration_id, file_path, url_endpoint, Integer.parseInt(prop.getProperty("DEFAULT_RETRIES")));
     }
 
     /**
@@ -171,6 +203,15 @@ public class Upload {
      * @param retryAttempts  The number of times to retry uploading a file if there is a failure.
      */
     public static Hashtable<String, String> uploadFile(String tenant_id, String integration_id, String file_path, String url_endpoint, int retryAttempts) {
+        Properties prop = new Properties();
+
+        try {
+            ClassLoader loader = Thread.currentThread().getContextClassLoader();
+            InputStream propStream = loader.getResourceAsStream("config.properties");
+            prop.load(propStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         File file = new File(file_path);
         Hashtable<String, String> results = new Hashtable<String, String>(1);
@@ -212,7 +253,7 @@ public class Upload {
                 connection.setRequestMethod("PUT");
                 connection.setUseCaches(false);
                 connection.setDoOutput(true);
-                connection.setChunkedStreamingMode(CHUNK_SIZE);
+                connection.setChunkedStreamingMode(Integer.parseInt(prop.getProperty("CHUNK_SIZE")));
                 connection.connect();
 
                 // Get an output stream we can write over the connection to
@@ -314,7 +355,7 @@ public class Upload {
             // If we got this far there was a problem. Need to retry...
             // Need to NOT retry when it is a data issue. Next step.
             if (tryCount < retryAttempts) {
-                int retryTime = tryCount * DEFAULT_BACKOFF;
+                int retryTime = tryCount * Integer.parseInt(prop.getProperty("DEFAULT_BACKOFF"));
                 //System.out.printf(".. Retrying in %ds. Run %d out of %d times... \n", retryTime, tryCount, retryAttempts);
                 try {
                     Thread.sleep(retryTime * 1000);
@@ -340,7 +381,7 @@ public class Upload {
      * @return String of the response body.
      * @throws IOException Exception if there is an issue with stream reading.
      */
-    private static String getResponseBody(InputStream responseStream) throws IOException {
+    public static String getResponseBody(InputStream responseStream) throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
         String line;
         BufferedReader br = new BufferedReader(new InputStreamReader(responseStream));
@@ -350,11 +391,11 @@ public class Upload {
         return stringBuilder.toString();
     }
 
-    private static String logBuilder(String url, String status, String responsePayload) {
+    public static String logBuilder(String url, String status, String responsePayload) {
         return "com.playmaker.mtools.Upload.UploadFile -- " + responsePayload + " -- " + status + " -- " + url; 
     }
 
-    private static Hashtable<String, String> resultsExtender(Hashtable<String, String> hash_to, String key, String val) {
+    public static Hashtable<String, String> resultsExtender(Hashtable<String, String> hash_to, String key, String val) {
         if (hash_to.containsKey(key)) {
             val = hash_to.get(key) + "\n" + val; 
         }
@@ -362,7 +403,7 @@ public class Upload {
         return hash_to;
     }
 
-    private static Hashtable<String, String> resultsExtender(Hashtable<String, String> hash_to, Hashtable<String, String> hash_from) {
+    public static Hashtable<String, String> resultsExtender(Hashtable<String, String> hash_to, Hashtable<String, String> hash_from) {
         for(String key: hash_from.keySet()){
             resultsExtender(hash_to, key, hash_from.get(key));
         }
